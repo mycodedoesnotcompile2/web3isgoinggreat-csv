@@ -1,0 +1,49 @@
+name: Daily updater
+on:
+  workflow_dispatch
+  #schedule:
+  #  - cron:  '10 03 * * *'
+
+permissions:
+  contents: write
+
+env:
+  REPO_DIR: /tmp/web3isgoinggreat
+  DEFAULT_OUT_FILE_NAME: web3isgoinggreat.csv
+  
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set env vars
+      run: |
+        OUT_FILE="/tmp/$DEFAULT_OUT_FILE_NAME"
+        REPO_FILE="$GITHUB_WORKSPACE/$DEFAULT_OUT_FILE_NAME"
+        
+        echo "OUT_FILE=$OUT_FILE" >> $GITHUB_ENV
+        echo "REPO_FILE=$REPO_FILE" >> $GITHUB_ENV
+
+    - name: Install prerequisites
+      run: |
+        pip install -r "$GITHUB_WORKSPACE/_resources/requirements.txt"
+    
+    - name: Process latest version
+      run: |
+        cd /tmp/
+        python "$GITHUB_WORKSPACE/_resources/script.py" -o "$OUT_FILE"
+
+    - name: Check and push
+      run: |
+        cd $GITHUB_WORKSPACE
+        
+        if (( $(wc -c < "$OUT_FILE") > $(wc -c < "$REPO_FILE") )); then
+          cp -vf "$OUT_FILE" "$REPO_FILE"
+        fi
+
+        git config user.name updating-bot
+        git config user.email github-actions@github.com
+        git pull
+        git commit "$REPO_FILE" -m "updating bot - $(date '+%Y/%m/%d')"
+        git push
