@@ -1,8 +1,8 @@
 name: Daily updater
 on:
-  #workflow_dispatch
-  schedule:
-    - cron:  '10 03 * * *'
+  workflow_dispatch
+  # schedule:
+  #   - cron:  '10 03 * * *'
 
 permissions:
   contents: write
@@ -10,6 +10,7 @@ permissions:
 env:
   REPO_DIR: /tmp/web3isgoinggreat
   DEFAULT_OUT_FILE_NAME: web3isgoinggreat.csv
+  APT: sudo apt -y -qq -o=Dpkg::Use-Pty=0
   
 jobs:
   update:
@@ -27,12 +28,18 @@ jobs:
 
     - name: Install prerequisites
       run: |
+        $APT update && $APT install colordiff
         pip install -r "$GITHUB_WORKSPACE/_resources/requirements.txt"
     
     - name: Process latest version
       run: |
         cd /tmp/
         python "$GITHUB_WORKSPACE/_resources/script.py" -o "$OUT_FILE"
+
+    - name: Show diff
+      run: |
+        cd /tmp/
+        colordiff -s "$REPO_FILE" "$OUT_FILE" || true
 
     - name: Check and push
       run: |
